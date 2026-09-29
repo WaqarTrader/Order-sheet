@@ -85,7 +85,11 @@
         <div style="font-weight:900;font-size:16px">Sale Orders</div>
         <button id="btn-new" class="btn btn-pri btn-sm"><i class="fa-solid fa-plus"></i> New Sale Order</button>
       </div>
-      <div class="field" style="margin-bottom:10px"><label>Date</label><input id="list-date" type="date" style="text-transform:none"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div class="field"><label>From</label><input id="list-from" type="date" style="text-transform:none"></div>
+        <div class="field"><label>To</label><input id="list-to" type="date" style="text-transform:none"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Current month + all pending always · other months via date range</div>
       <div id="order-list"></div>
     </section>
 
@@ -149,6 +153,10 @@ let editId=null, formItems=[];
 
 const money=n=>(Number(n)||0).toFixed(2);
 const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+function monthStart(){
+  const d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";
+}
 function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),2400)}
 function showError(m){document.getElementById("err-text").textContent=m;document.getElementById("err-modal").classList.add("on")}
 function up(s){return String(s||"").trim().toUpperCase()}
@@ -201,7 +209,9 @@ function showApp(){
   document.getElementById("sc-login").classList.remove("on");
   document.getElementById("sc-app").classList.add("on");
   document.getElementById("hdr-name").textContent=session.name||session.username;
-  document.getElementById("list-date").value=today();
+  const lf=document.getElementById("list-from");const lt=document.getElementById("list-to");
+  if(lf) lf.value=monthStart();
+  if(lt) lt.value=today();
   showList();
   attach();
 }
@@ -235,12 +245,23 @@ function showList(){
   editId=null;formItems=[];
   renderList();
 }
+
 function renderList(){
-  const day=document.getElementById("list-date").value||today();
+  const from=document.getElementById("list-from")&&document.getElementById("list-from").value;
+  const to=document.getElementById("list-to")&&document.getElementById("list-to").value;
+  const ms=monthStart();
+  const me=today();
   const list=Object.values(orders).filter(o=>{
     const d=o.date||"";
-    if(o.status==="pending") return true; // pending always show
-    return d===day;
+    const st=o.status||"pending";
+    if(st==="pending") return true; // always
+    // current month always
+    if(d>=ms && d<=me) return true;
+    // date range filter for history
+    if(from && to) return d>=from && d<=to;
+    if(from) return d>=from;
+    if(to) return d<=to;
+    return false; // older closed months hidden until filtered
   }).sort((a,b)=>(b.ts||0)-(a.ts||0));
   const box=document.getElementById("order-list");
   if(!list.length){box.innerHTML='<div style="text-align:center;color:var(--muted);padding:32px 0">No orders</div>';return}
@@ -264,7 +285,8 @@ function renderList(){
   }).join("");
   box.querySelectorAll("[data-view]").forEach(b=>b.onclick=()=>openOrder(b.getAttribute("data-view")));
 }
-document.getElementById("list-date").onchange=renderList;
+const _lf=document.getElementById("list-from");const _lt=document.getElementById("list-to");
+if(_lf)_lf.onchange=renderList;if(_lt)_lt.onchange=renderList;
 
 document.getElementById("btn-new").onclick=async()=>{
   editId=null;
@@ -430,4 +452,4 @@ try{
 })();
 </script>
 </body>
-  </html>
+</html>
